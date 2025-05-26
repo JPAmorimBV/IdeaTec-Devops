@@ -26,8 +26,8 @@ A **IdeaTec Tecnologia** é uma empresa especializada em soluções de **Cloud C
 
 ## 👨‍💻 Equipe Técnica
 
-| **Nome** | **RM** | **Função** | **Especialidade** |
-| :-- | :-- | :-- | :-- |
+| **Nome** | **RM** |
+| :-- | :-- |
 | **Carlos Eduardo Rodrigues Coelho Pacheco** | RM 557323 |
 | **Pedro Augusto Costa Ladeira** | RM 558514 | 
 | **João Pedro Amorim Brito Virgens** | RM 559213 | 
