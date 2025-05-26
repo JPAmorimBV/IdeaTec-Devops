@@ -42,7 +42,7 @@ graph TB
     A[Azure CLI] --> B[Linux VM Ubuntu 22.04]
     B --> C[Docker Engine]
     C --> D[Java Spring Boot API]
-    D --> E[H2/Oracle Database]
+    D --> E[Oracle Database]
     F[Load Balancer] --> B
     G[Network Security Group] --> B
     H[Public IP] --> F
