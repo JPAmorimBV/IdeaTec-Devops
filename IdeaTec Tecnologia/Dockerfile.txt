@@ -1,0 +1,78 @@
+# STAGE 1: BUILD STAGE
+FROM maven:3.9.5-eclipse-temurin-17-alpine AS build
+
+# Metadados da imagem
+LABEL maintainer="IdeaTec Tecnologia <contato@ideatec.tech>"
+LABEL description="Sistema de Mapeamento Inteligente Mottu - Challenge FIAP 2025"
+LABEL version="1.0.0"
+
+# Definir diretório de trabalho para build
+WORKDIR /build
+
+# Copiar arquivos de configuração Maven (cache de layers)
+COPY pom.xml .
+COPY .mvn/ .mvn/
+COPY mvnw .
+
+# Baixar dependências
+RUN chmod +x ./mvnw && \
+    ./mvnw dependency:go-offline -B
+
+# Copiar código fonte
+COPY src/ ./src/
+
+# Build da aplicação
+RUN ./mvnw clean package -DskipTests=false -B && \
+    mv target/*.jar app.jar
+
+# STAGE 2: RUNTIME STAGE - IMAGEM OTIMIZADA
+FROM eclipse-temurin:17-jre-alpine AS runtime
+
+# Instalar dependências mínimas necessárias
+RUN apk add --no-cache curl tzdata && \
+    rm -rf /var/cache/apk/*
+
+# Configurar timezone
+ENV TZ=America/Sao_Paulo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime
+
+# CRIAR USUÁRIO NÃO-ROOT (REQUISITO DO CHALLENGE)
+ARG USERNAME=mottuuser
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+RUN addgroup --gid $USER_GID $USERNAME && \
+    adduser --uid $USER_UID --gid $USER_GID --disabled-password --gecos "" $USERNAME
+
+# Definir diretório de trabalho
+WORKDIR /app
+
+# Copiar JAR da aplicação
+COPY --from=build /build/app.jar mottu-api.jar
+
+# Criar diretórios e definir permissões
+RUN mkdir -p /app/logs /app/data && \
+    chown -R $USERNAME:$USERNAME /app
+
+# VARIÁVEIS DE AMBIENTE PARA PRODUÇÃO
+ENV SPRING_PROFILES_ACTIVE=production \
+    SERVER_PORT=8080 \
+    JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0 -XX:+ExitOnOutOfMemoryError" \
+    SPRING_DATASOURCE_URL="jdbc:h2:file:/app/data/mottu;AUTO_SERVER=TRUE" \
+    SPRING_DATASOURCE_USERNAME="mottu" \
+    SPRING_DATASOURCE_PASSWORD="ideatec2025" \
+    SPRING_H2_CONSOLE_ENABLED=true \
+    SPRING_JPA_HIBERNATE_DDL_AUTO=update
+
+# Expor porta da aplicação
+EXPOSE 8080
+
+# USAR USUÁRIO NÃO-ROOT (REQUISITO DE SEGURANÇA)
+USER $USERNAME
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+# Comando de execução
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar mottu-api.jar"]
